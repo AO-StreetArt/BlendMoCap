@@ -17,7 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-@author: alex
+@author: alex barry
 """
 
 bl_info = {
@@ -30,6 +30,7 @@ bl_info = {
 }
 
 import bpy
+import time
 
 class CopyBoneRotations(bpy.types.Operator):
     bl_idname = "object.copy_bone_roll"
@@ -41,7 +42,6 @@ class CopyBoneRotations(bpy.types.Operator):
     # Called when operator is run
     def execute(self, context):
 
-        # Get the logger
         print("Copying Bone Rotation from %s to %s" % (self.source, self.destination))
         
         # Setup
@@ -83,16 +83,102 @@ class CopyBoneRotations(bpy.types.Operator):
     def invoke(self, context, event):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
-    
+
+
+class AddRotationConstraints(bpy.types.Operator):
+    bl_idname = "object.add_rotation_constraints"
+    bl_label = "Add Rotation Constraints"
+    bl_options = {'REGISTER', 'UNDO'}
+    constrained = bpy.props.StringProperty(name="ConstrainedObject", default="ConstrainedObject")
+    target = bpy.props.StringProperty(name="TargetObject", default="TargetObject")
+
+    # Called when operator is run
+    def execute(self, context):
+
+        print("Adding Rotation Constraints to %s with target %s" % (self.constrained, self.target))
+
+        # Deselect everything
+        for ob in bpy.context.selected_objects:
+            ob.select = False
+
+        # Get the source and target armatures
+        src = bpy.context.scene.objects[self.constrained]
+        trg = bpy.context.scene.objects[self.target]
+
+        # Select the source armature
+        src.select = True
+        bpy.context.scene.objects.active = src
+
+        # Set pose mode and select all the bones in the armature
+        bpy.ops.object.mode_set(mode='POSE')
+        bpy.ops.pose.select_all(action='SELECT')
+
+        # iterate over the pose bones
+        for bone in bpy.context.selected_pose_bones:
+
+            # Apply a Copy Rotation Constraint to each pose bone
+            new_constraint = bone.constraints.new('COPY_ROTATION')
+
+            # Set up the constraint target and set it to copy pose data
+            new_constraint.target = bpy.data.objects[self.target]
+            new_constraint.subtarget = bone.name
+            new_constraint.target_space = 'POSE'
+            new_constraint.owner_space = 'POSE'
+
+        # Let's blender know the operator is finished
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+class AddLocationConstraints(bpy.types.Operator):
+    bl_idname = "object.add_location_constraints"
+    bl_label = "Add Location Constraints"
+    bl_options = {'REGISTER', 'UNDO'}
+    constrained = bpy.props.StringProperty(name="ConstrainedObject", default="ConstrainedObject")
+    target = bpy.props.StringProperty(name="TargetObject", default="TargetObject")
+
+    # Called when operator is run
+    def execute(self, context):
+
+        print("Adding Location Constraints to %s with target %s" % (self.constrained, self.target))
+
+        # iterate over the pose bones
+        for bone in bpy.context.selected_pose_bones:
+
+            # Apply a Copy Rotation Constraint to each pose bone
+            new_constraint = bone.constraints.new('COPY_LOCATION')
+
+            # Set up the constraint target and set it to copy pose data
+            new_constraint.target = bpy.data.objects[self.target]
+            new_constraint.subtarget = bone.name
+            new_constraint.target_space = 'POSE'
+            new_constraint.owner_space = 'POSE'
+
+        # Let's blender know the operator is finished
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
 def copy_bone_rot_menu_func(self, context):
-    self.layout.operator(CopyBoneRotations.bl_idname) 
+    self.layout.operator(CopyBoneRotations.bl_idname)
+
+def add_rot_constraint_menu_func(self, context):
+    self.layout.operator(AddRotationConstraints.bl_idname)
         
 def register():
     bpy.utils.register_class(CopyBoneRotations)
+    bpy.utils.register_class(AddRotationConstraints)
     bpy.types.VIEW3D_MT_object.append(copy_bone_rot_menu_func)
+    bpy.types.VIEW3D_MT_object.append(add_rot_constraint_menu_func)
     
 def unregister():
+    bpy.types.VIEW3D_MT_object.remove(add_rot_constraint_menu_func)
     bpy.types.VIEW3D_MT_object.remove(copy_bone_rot_menu_func)
+    bpy.utils.unregister_class(AddRotationConstraints)
     bpy.utils.unregister_class(CopyBoneRotations)
     
 if __name__ == "__main__":
