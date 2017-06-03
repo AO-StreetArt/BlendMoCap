@@ -32,9 +32,30 @@ bl_info = {
 import bpy
 import time
 
-# TO-DO: Transform the mocap constraints to keyframes
+# Transform the mocap constraints to keyframes
 def createMocapKeyframes(src, trg, keyframe_interval):
     print("Creating Motion Capture Keyframes on %s with target %s" % (src.name, trg.name))
+
+    selectAndPose(src)
+    bpy.ops.pose.select_all(action='SELECT')
+
+    start_frame_index = bpy.context.scene.frame_start
+    end_frame_index = bpy.context.scene.frame_end
+
+    num_iters = int((end_frame_index-start_frame_index)/keyframe_interval)
+
+    print("Start Frame: %s -- End Frame: %s -- Interval: %s -- Iterations: %s" % (start_frame_index, end_frame_index, keyframe_interval, num_iters))
+
+    for i in range(0,num_iters):
+
+        bpy.context.scene.frame_current = i * keyframe_interval
+
+        # iterate over the pose bones
+        for bone in bpy.context.selected_pose_bones:
+            bone.keyframe_insert(data_path='location')
+            bone.keyframe_insert(data_path='rotation_euler')
+            bone.keyframe_insert(data_path='rotation_quaternion')
+            bone.keyframe_insert(data_path='scale')
 
 # Select an object and switch to pose mode
 def selectAndPose(src):
@@ -63,7 +84,6 @@ def removeMocapConstraints(src):
                 bone.constraints.remove(c)
 
 # Copy the roll values for all bones in one armature to another
-# TO-DO: Only map to the target bones that were taken from the source
 def copyBoneRolls(src, trg):
     # Setup
     rolls = {}
@@ -84,7 +104,8 @@ def copyBoneRolls(src, trg):
     bpy.ops.object.mode_set(mode='EDIT')
     for eb in trg.data.edit_bones:
         oldRoll = eb.roll
-        eb.roll = rolls[eb.name]
+        if eb.name in rolls:
+            eb.roll = rolls[eb.name]
         print(eb.name, oldRoll, eb.roll)
 
 # Setup Copy Rotation & Location Constraints
