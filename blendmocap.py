@@ -30,13 +30,13 @@ bl_info = {
 }
 
 import bpy
-import time
+
 
 # Transform the mocap constraints to keyframes
-def createMocapKeyframes(src, trg, keyframe_interval):
+def create_mocap_keyframes(src, trg, keyframe_interval):
     print("Creating Motion Capture Keyframes on %s with target %s" % (src.name, trg.name))
 
-    selectAndPose(src)
+    select_and_pose(src)
     bpy.ops.pose.select_all(action='SELECT')
 
     start_frame_index = bpy.context.scene.frame_start
@@ -44,9 +44,10 @@ def createMocapKeyframes(src, trg, keyframe_interval):
 
     num_iters = int((end_frame_index-start_frame_index)/keyframe_interval)
 
-    print("Start Frame: %s -- End Frame: %s -- Interval: %s -- Iterations: %s" % (start_frame_index, end_frame_index, keyframe_interval, num_iters))
+    print("Start Frame: %s -- End Frame: %s -- Interval: %s -- Iterations: %s" % (start_frame_index, end_frame_index,
+                                                                                  keyframe_interval, num_iters))
 
-    for i in range(0,num_iters):
+    for i in range(0, num_iters):
 
         bpy.context.scene.frame_current = i * keyframe_interval
 
@@ -57,8 +58,9 @@ def createMocapKeyframes(src, trg, keyframe_interval):
             bone.keyframe_insert(data_path='rotation_quaternion')
             bone.keyframe_insert(data_path='scale')
 
+
 # Select an object and switch to pose mode
-def selectAndPose(src):
+def select_and_pose(src):
     # Deselect everything
     for ob in bpy.context.selected_objects:
         ob.select = False
@@ -70,11 +72,12 @@ def selectAndPose(src):
     # Set pose mode and select all the bones in the armature
     bpy.ops.object.mode_set(mode='POSE')
 
-# Removes the mocap constraints
-def removeMocapConstraints(src):
-    print("Removing Motion Capture Constraints from %s" % (src.name))
 
-    selectAndPose(src)
+# Removes the mocap constraints
+def remove_mocap_constraints(src):
+    print("Removing Motion Capture Constraints from %s" % src.name)
+
+    select_and_pose(src)
     bpy.ops.pose.select_all(action='SELECT')
 
     # iterate over the pose bones
@@ -83,8 +86,9 @@ def removeMocapConstraints(src):
             if c.type == 'COPY_ROTATION' or c.type == 'COPY_LOCATION':
                 bone.constraints.remove(c)
 
+
 # Copy the roll values for all bones in one armature to another
-def copyBoneRolls(src, trg):
+def copy_bone_rolls(src, trg):
     # Setup
     rolls = {}
 
@@ -103,13 +107,14 @@ def copyBoneRolls(src, trg):
     bpy.context.scene.objects.active = trg
     bpy.ops.object.mode_set(mode='EDIT')
     for eb in trg.data.edit_bones:
-        oldRoll = eb.roll
+        old_roll = eb.roll
         if eb.name in rolls:
             eb.roll = rolls[eb.name]
-        print(eb.name, oldRoll, eb.roll)
+        print(eb.name, old_roll, eb.roll)
+
 
 # Setup Copy Rotation & Location Constraints
-def addMocapConstraints(src, trg):
+def add_mocap_constraints(src, trg):
     print("Adding Location Constraints to %s with target %s" % (src.name, trg.name))
 
     # iterate over the pose bones
@@ -129,7 +134,7 @@ def addMocapConstraints(src, trg):
 
     print("Adding Rotation Constraints to %s with target %s" % (src, trg))
 
-    selectAndPose(src)
+    select_and_pose(src)
     bpy.ops.pose.select_all(action='SELECT')
 
     # iterate over the pose bones
@@ -144,6 +149,12 @@ def addMocapConstraints(src, trg):
         new_constraint.target_space = 'POSE'
         new_constraint.owner_space = 'POSE'
 
+
+# Blender Operators
+# Functions exposed via the Blender UI
+
+
+# Copy Bone Roll from one armature to another
 class CopyBoneRotations(bpy.types.Operator):
     bl_idname = "object.copy_bone_roll"
     bl_label = "Copy Bone Roll"
@@ -163,14 +174,13 @@ class CopyBoneRotations(bpy.types.Operator):
             print("No source selected")
         else:
             print("Copying Bone Rotation from %s to %s" % (src.name, trg.name))
-            copyBoneRolls(src, trg)
+            copy_bone_rolls(src, trg)
 
-        #Let's blender know the operator is finished
+        # Let's blender know the operator is finished
         return {'FINISHED'}
+    
 
-# Blender Operators
-# Functions exposed via the Blender UI
-
+# Actually transfer the mocap data from one rig to another
 class TransferMoCapData(bpy.types.Operator):
     bl_idname = "object.transfer_mocap_data"
     bl_label = "Transfer MoCap Data"
@@ -196,14 +206,14 @@ class TransferMoCapData(bpy.types.Operator):
         if src is None:
             print("no source selected")
         else:
-            if (gen_cn):
+            if gen_cn:
                 # Set up the Motion Capture Constraints
-                addMocapConstraints(trg, src)
-            if (gen_kf):
+                add_mocap_constraints(trg, src)
+            if gen_kf:
                 # Transform the constraints to keyframes
-                createMocapKeyframes(trg, src, interv)
+                create_mocap_keyframes(trg, src, interv)
                 # Remove the Motion Capture Constraints
-                removeMocapConstraints(trg)
+                remove_mocap_constraints(trg)
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
@@ -212,6 +222,8 @@ class TransferMoCapData(bpy.types.Operator):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
 
+
+# Copy the mocap armature without keeping the animations
 class CopyArmaturewithoutAnimation(bpy.types.Operator):
     bl_idname = "object.copy_armature_without_animation"
     bl_label = "Copy Armature without Animation"
@@ -229,15 +241,18 @@ class CopyArmaturewithoutAnimation(bpy.types.Operator):
         # Let's blender know the operator is finished
         return {'FINISHED'}
 
+
 def register():
     bpy.utils.register_class(CopyBoneRotations)
     bpy.utils.register_class(CopyArmaturewithoutAnimation)
     bpy.utils.register_class(TransferMoCapData)
 
+
 def unregister():
     bpy.utils.unregister_class(TransferMoCapData)
     bpy.utils.unregister_class(CopyArmaturewithoutAnimation)
     bpy.utils.unregister_class(CopyBoneRotations)
+
 
 if __name__ == "__main__":
     register()
