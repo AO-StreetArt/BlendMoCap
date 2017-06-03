@@ -1,3 +1,5 @@
+![](https://travis-ci.org/AO-StreetArt/BlendMoCap.svg?branch=master)
+
 # BlendMoCap by AO
 
 BlendMoCap is a Blender Addon designed to allow the use of BVH data in real animations.  This project was started due to the out-of-date addon that ships with blender, which doesn't appear to have worked correctly for some time.
