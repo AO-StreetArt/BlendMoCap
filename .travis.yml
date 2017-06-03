@@ -6,7 +6,7 @@ addons:
     packages:
       - blender
 before_install:
-  - sudo apt-get upgrade
+  - sudo apt-get upgrade -y
 install:
   # Get the latest version of blender to test against
   - mkdir tmp && cd tmp
