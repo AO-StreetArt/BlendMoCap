@@ -8,7 +8,7 @@ addons:
       - blender
 install:
   # Copy the blendmocap addon into the default addons directory for blender
-  - mkdir -p ~/.config/blender/2.76/scripts/addons/
+  - sudo mkdir -p /usr/share/blender/scripts/addons
   - sudo cp blendmocap.py /usr/share/blender/scripts/addons/blendmocap.py
 script:
   - python tests.py
