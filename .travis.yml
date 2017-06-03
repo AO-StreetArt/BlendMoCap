@@ -5,8 +5,6 @@ addons:
   apt:
     packages:
       - blender
-before_install:
-  - apt-get update
 install:
   # Get the latest version of blender to test against
   - mkdir tmp && cd tmp
