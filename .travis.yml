@@ -13,6 +13,12 @@ before_install:
   - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
   - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
 install:
+  # Install the AOSSL Dependencies, which also handle the latest version of GLIBC
+  - git clone https://github.com/AO-StreetArt/AOSharedServiceLibrary.git
+  - mkdir ../aossl_deps
+  - sudo cp AOSharedServiceLibrary/scripts/deb/build_deps.sh ../aossl_deps
+  - cd ../aossl_deps && sudo ./build_deps.sh
+  - cd $TRAVIS_BUILD_DIR
   # Get the latest version of blender to test against
   - mkdir tmp && cd tmp
   - wget http://mirror.cs.umn.edu/blender.org/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
