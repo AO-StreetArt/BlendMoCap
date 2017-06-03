@@ -17,12 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-@author: alex barry
+@author: AO Street Art
 """
 
 bl_info = {
-    "name": "BlendMoCap",
-    "author": "Alex Barry",
+    "name": "blendmocap",
+    "author": "AO Street Art",
     "version": (0, 0, 1),
     "blender": (2, 78, 0),
     "description": "Blender Add on to assist in the use of using BVH data",
@@ -30,6 +30,9 @@ bl_info = {
 }
 
 import bpy
+
+
+# Base Functions
 
 
 # Transform the mocap constraints to keyframes
@@ -42,22 +45,8 @@ def create_mocap_keyframes(src, trg, keyframe_interval):
     start_frame_index = bpy.context.scene.frame_start
     end_frame_index = bpy.context.scene.frame_end
 
-    num_iters = int((end_frame_index-start_frame_index)/keyframe_interval)
-
-    print("Start Frame: %s -- End Frame: %s -- Interval: %s -- Iterations: %s" % (start_frame_index, end_frame_index,
-                                                                                  keyframe_interval, num_iters))
-
-    for i in range(0, num_iters):
-
-        bpy.context.scene.frame_current = i * keyframe_interval
-
-        # iterate over the pose bones
-        for bone in bpy.context.selected_pose_bones:
-            bone.keyframe_insert(data_path='location')
-            bone.keyframe_insert(data_path='rotation_euler')
-            bone.keyframe_insert(data_path='rotation_quaternion')
-            bone.keyframe_insert(data_path='scale')
-
+    bpy.ops.nla.bake(frame_start=start_frame_index, frame_end=end_frame_index, visual_keying=True,
+                     clear_constraints=True, step=keyframe_interval,only_selected=True, bake_types={'POSE'})
 
 # Select an object and switch to pose mode
 def select_and_pose(src):
@@ -150,6 +139,56 @@ def add_mocap_constraints(src, trg):
         new_constraint.owner_space = 'POSE'
 
 
+# Core Logic
+
+
+# Copy the armature with no animation
+def copy_armature_without_animation():
+    # Duplicate the armature
+    bpy.ops.object.duplicate_move()
+
+    # Remove the keyframes from the armature
+    bpy.ops.anim.keyframe_clear_v3d()
+
+
+# Copy bone roll values from one armature to another
+def copy_bone_rotations():
+    # Find the source and target armatures
+    trg = bpy.context.scene.objects.active
+    src = None
+    for ob in bpy.context.selected_objects:
+        if ob.name != trg.name:
+            src = ob
+
+    if src is None:
+        print("No source selected")
+    else:
+        print("Copying Bone Rotation from %s to %s" % (src.name, trg.name))
+        copy_bone_rolls(src, trg)
+
+
+# Actually transfer the motion capture data
+def transfer_mocap_data(interv, gen_cn, gen_kf):
+    # Find the source and target armatures
+    trg = bpy.context.scene.objects.active
+    src = None
+    for ob in bpy.context.selected_objects:
+        if ob.name != trg.name:
+            src = ob
+
+    if src is None:
+        print("no source selected")
+    else:
+        if gen_cn or gen_kf:
+            # Set up the Motion Capture Constraints
+            add_mocap_constraints(trg, src)
+        if gen_kf:
+            # Transform the constraints to keyframes
+            create_mocap_keyframes(trg, src, interv)
+            # Remove the Motion Capture Constraints
+            remove_mocap_constraints(trg)
+
+
 # Blender Operators
 # Functions exposed via the Blender UI
 
@@ -163,22 +202,11 @@ class CopyBoneRotations(bpy.types.Operator):
     # Called when operator is run
     def execute(self, context):
 
-        # Find the source and target armatures
-        trg = bpy.context.scene.objects.active
-        src = None
-        for ob in bpy.context.selected_objects:
-            if ob.name != trg.name:
-                src = ob
-
-        if src is None:
-            print("No source selected")
-        else:
-            print("Copying Bone Rotation from %s to %s" % (src.name, trg.name))
-            copy_bone_rolls(src, trg)
+        copy_bone_rotations()
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
-    
+
 
 # Actually transfer the mocap data from one rig to another
 class TransferMoCapData(bpy.types.Operator):
@@ -192,28 +220,8 @@ class TransferMoCapData(bpy.types.Operator):
     # Called when operator is run
     def execute(self, context):
 
-        interv = self.keyframe_interval
-        gen_kf = self.generate_keyframes
-        gen_cn = self.generate_constraints
-
-        # Find the source and target armatures
-        trg = bpy.context.scene.objects.active
-        src = None
-        for ob in bpy.context.selected_objects:
-            if ob.name != trg.name:
-                src = ob
-
-        if src is None:
-            print("no source selected")
-        else:
-            if gen_cn:
-                # Set up the Motion Capture Constraints
-                add_mocap_constraints(trg, src)
-            if gen_kf:
-                # Transform the constraints to keyframes
-                create_mocap_keyframes(trg, src, interv)
-                # Remove the Motion Capture Constraints
-                remove_mocap_constraints(trg)
+        transfer_mocap_data(self.keyframe_interval, self.generate_keyframes,
+                            self.generate_constraints)
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
@@ -232,21 +240,19 @@ class CopyArmaturewithoutAnimation(bpy.types.Operator):
     # Called when operator is run
     def execute(self, context):
 
-        # Duplicate the armature
-        bpy.ops.object.duplicate_move()
-
-        # Remove the keyframes from the armature
-        bpy.ops.anim.keyframe_clear_v3d()
+        copy_armature_without_animation()
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
+
+
+# Register and UnRegister functions for the operators
 
 
 def register():
     bpy.utils.register_class(CopyBoneRotations)
     bpy.utils.register_class(CopyArmaturewithoutAnimation)
     bpy.utils.register_class(TransferMoCapData)
-
 
 def unregister():
     bpy.utils.unregister_class(TransferMoCapData)

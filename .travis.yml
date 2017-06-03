@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+addons:
+  apt:
+    packages:
+      - blender
+before_install:
+  - sudo apt-get update
+install:
+  # Get the latest version of blender to test against
+  - mkdir tmp && cd tmp
+  - wget http://mirror.cs.umn.edu/blender.org/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+  - tar -xjvf blender-2.78c-linux-glibc219-x86_64.tar.bz2
+  - mv blender-2.78c-linux-glibc219-x86_64 blender
+  - cd $TRAVIS_BUILD_DIR
+  - sudo ln -s blendmocap.py tmp/blender/2.78/scripts/addons/blendmocap.py
+script:
+  - python tests.py tmp/blender/blender
