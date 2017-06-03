@@ -5,7 +5,7 @@ addons:
   apt:
     packages:
       - blender
-      - libc6
+      - libc6-dev
 before_install:
   - sudo apt-get update
 install:
@@ -16,5 +16,7 @@ install:
   - mv blender-2.78c-linux-glibc219-x86_64 blender
   - cd $TRAVIS_BUILD_DIR
   - sudo ln -s blendmocap.py tmp/blender/2.78/scripts/addons/blendmocap.py
+before_script:
+  - ldd --version
 script:
   - python tests.py tmp/blender/blender
