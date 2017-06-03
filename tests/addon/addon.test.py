@@ -1,10 +1,6 @@
 import unittest
 import bpy
 
-# Install and Enable the Addon within the currently running blender instance
-# bpy.ops.wm.addon_install(filepath="/home/abarry/Documents/python/BlendMoCap/blendmocap.py")
-# bpy.ops.wm.addon_enable(module="blendmocap")
-
 #Import the addon for the purposes of the test script
 import blendmocap
 
