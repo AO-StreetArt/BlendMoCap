@@ -119,7 +119,7 @@ def addMocapConstraints(src, trg):
         new_constraint = bone.constraints.new('COPY_LOCATION')
 
         # Set up the constraint target and set it to copy pose data
-        new_constraint.target = bpy.data.objects[self.trg]
+        new_constraint.target = trg
         new_constraint.subtarget = bone.name
         new_constraint.target_space = 'POSE'
         new_constraint.owner_space = 'POSE'
@@ -127,7 +127,7 @@ def addMocapConstraints(src, trg):
     # Turn off pose mode so that we can do basic operations
     bpy.ops.object.posemode_toggle()
 
-    print("Adding Rotation Constraints to %s with target %s" % (self.constrained, self.target))
+    print("Adding Rotation Constraints to %s with target %s" % (src, trg))
 
     selectAndPose(src)
     bpy.ops.pose.select_all(action='SELECT')
@@ -139,7 +139,7 @@ def addMocapConstraints(src, trg):
         new_constraint = bone.constraints.new('COPY_ROTATION')
 
         # Set up the constraint target and set it to copy pose data
-        new_constraint.target = bpy.data.objects[self.target]
+        new_constraint.target = trg
         new_constraint.subtarget = bone.name
         new_constraint.target_space = 'POSE'
         new_constraint.owner_space = 'POSE'
@@ -156,7 +156,7 @@ class CopyBoneRotations(bpy.types.Operator):
         trg = bpy.context.scene.objects.active
         src = None
         for ob in bpy.context.selected_objects:
-            if ob.name != src.name:
+            if ob.name != trg.name:
                 src = ob
 
         if src is None:
@@ -177,7 +177,7 @@ class TransferMoCapData(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     generate_constraints = bpy.props.BoolProperty(name="GenerateConstraints")
     generate_keyframes = bpy.props.BoolProperty(name="GenerateKeyframes")
-    keyframe_interval = bpy.props.IntProperty(name="KeyFrameInterval", default="KeyFrameInterval")
+    keyframe_interval = bpy.props.IntProperty(name="KeyFrameInterval", default=1)
 
     # Called when operator is run
     def execute(self, context):
@@ -190,7 +190,7 @@ class TransferMoCapData(bpy.types.Operator):
         trg = bpy.context.scene.objects.active
         src = None
         for ob in bpy.context.selected_objects:
-            if ob.name != src.name:
+            if ob.name != trg.name:
                 src = ob
 
         if src is None:
@@ -198,12 +198,12 @@ class TransferMoCapData(bpy.types.Operator):
         else:
             if (gen_cn):
                 # Set up the Motion Capture Constraints
-                addMocapConstraints(src, trg)
+                addMocapConstraints(trg, src)
             if (gen_kf):
                 # Transform the constraints to keyframes
-                createMocapKeyframes(src, trg, interv)
+                createMocapKeyframes(trg, src, interv)
                 # Remove the Motion Capture Constraints
-                removeMocapConstraints(src)
+                removeMocapConstraints(trg)
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
