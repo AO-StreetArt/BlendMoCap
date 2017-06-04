@@ -62,7 +62,7 @@ def select_and_pose(src):
     bpy.ops.object.mode_set(mode='POSE')
 
 
-# Removes the mocap constraints
+# Removes the mocap constraints, and ensures that if any bones were selected in pose mode, then they stay selected
 def remove_mocap_constraints(src):
     print("Removing Motion Capture Constraints from %s" % src.name)
 
@@ -72,7 +72,7 @@ def remove_mocap_constraints(src):
     # iterate over the pose bones
     for bone in bpy.context.selected_pose_bones:
         for c in bone.constraints:
-            if c.type == 'COPY_ROTATION' or c.type == 'COPY_LOCATION':
+            if c.type == 'COPY_ROTATION' or c.type == 'COPY_LOCATION' or c.type =='LIMIT_ROTATION':
                 bone.constraints.remove(c)
 
 
@@ -102,10 +102,9 @@ def copy_bone_rolls(src, trg):
         print(eb.name, old_roll, eb.roll)
 
 
-# Setup Copy Rotation & Location Constraints
-def add_mocap_constraints(src, trg):
+# Copy Location Constraints
+def add_location_mocap_constraints(src, trg):
     print("Adding Location Constraints to %s with target %s" % (src.name, trg.name))
-
     # iterate over the pose bones
     for bone in bpy.context.selected_pose_bones:
 
@@ -118,8 +117,8 @@ def add_mocap_constraints(src, trg):
         new_constraint.target_space = 'POSE'
         new_constraint.owner_space = 'POSE'
 
-    # Turn off pose mode so that we can do basic operations
-    bpy.ops.object.posemode_toggle()
+# Setup Copy Rotation & Location Constraints
+def add_rotation_mocap_constraints(src, trg):
 
     print("Adding Rotation Constraints to %s with target %s" % (src, trg))
 
@@ -140,6 +139,16 @@ def add_mocap_constraints(src, trg):
 
 
 # Core Logic
+
+
+# Add a Limit Rotation Constraint to fix a twisted bone
+def add_twist_fix():
+    # iterate over the pose bones
+    for bone in bpy.context.selected_pose_bones:
+
+        # Apply a Limit Rotation Constraint to each pose bone
+        new_constraint = bone.constraints.new('LIMIT_ROTATION')
+        new_constraint.owner_space = 'POSE'
 
 
 # Copy the armature with no animation
@@ -179,9 +188,12 @@ def transfer_mocap_data(interv, gen_cn, gen_kf):
     if src is None:
         print("no source selected")
     else:
-        if gen_cn or gen_kf:
+        if gen_cn:
             # Set up the Motion Capture Constraints
-            add_mocap_constraints(trg, src)
+            add_location_mocap_constraints(trg, src)
+            # Turn off pose mode so that we can do basic operations
+            bpy.ops.object.posemode_toggle()
+            add_rotation_mocap_constraints(trg, src)
         if gen_kf:
             # Transform the constraints to keyframes
             create_mocap_keyframes(trg, src, interv)
@@ -208,20 +220,35 @@ class CopyBoneRotations(bpy.types.Operator):
         return {'FINISHED'}
 
 
+# Fix Twisted Bones
+class FixTwistedBones(bpy.types.Operator):
+    bl_idname = "object.fix_twisted_bones"
+    bl_label = "Fix Twisted Bones"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # Called when operator is run
+    def execute(self, context):
+
+        add_twist_fix()
+
+        # Let's blender know the operator is finished
+        return {'FINISHED'}
+
+
 # Actually transfer the mocap data from one rig to another
 class TransferMoCapData(bpy.types.Operator):
     bl_idname = "object.transfer_mocap_data"
     bl_label = "Transfer MoCap Data"
     bl_options = {'REGISTER', 'UNDO'}
-    generate_constraints = bpy.props.BoolProperty(name="GenerateConstraints")
-    generate_keyframes = bpy.props.BoolProperty(name="GenerateKeyframes")
-    keyframe_interval = bpy.props.IntProperty(name="KeyFrameInterval", default=1)
+    generate_constraints = bpy.props.BoolProperty(name="Generate Constraints", default=True)
+    generate_keyframes = bpy.props.BoolProperty(name="Generate Keyframes", default=True)
+    keyframe_interval = bpy.props.IntProperty(name="KeyFrameInterval", default=5)
 
     # Called when operator is run
     def execute(self, context):
 
-        transfer_mocap_data(self.keyframe_interval, self.generate_keyframes,
-                            self.generate_constraints)
+        transfer_mocap_data(self.keyframe_interval, self.generate_constraints,
+                            self.generate_keyframes)
 
         # Let's blender know the operator is finished
         return {'FINISHED'}
@@ -246,18 +273,71 @@ class CopyArmaturewithoutAnimation(bpy.types.Operator):
         return {'FINISHED'}
 
 
-# Register and UnRegister functions for the operators
+# Remove the Mocap Constraints
+class RemoveMocapConstraints(bpy.types.Operator):
+    bl_idname = "object.remove_mocap_constraints"
+    bl_label = "Remove Motion Capture Constraints"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # Called when operator is run
+    def execute(self, context):
+        remove_mocap_constraints(trg)
+
+        # Let's blender know the operator is finished
+        return {'FINISHED'}
+
+
+# Custom UI Elements
+
+
+# Armature Panel
+class MocapArmaturePanel(bpy.types.Panel):
+    """Create the BlendMoCap Armature Panel"""
+    bl_label = "BlendMoCap"
+    bl_idname = "ARMATURE_PT_BlendMoCap"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
+    def draw(self, context):
+        layout = self.layout
+
+        row = layout.row()
+        row.label(text="First Bone", icon='ARMATURE_DATA')
+
+        row = layout.row()
+        row.operator("object.transfer_mocap_data")
+
+
+class VIEW3D_PT_tools_blendmocap(bpy.types.Panel):
+    bl_label = "BlendMoCap Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+
+    def draw(self, context):
+        self.layout.operator("object.copy_armature_without_animation")
+        self.layout.operator("object.copy_bone_roll")
+        self.layout.operator("object.fix_twisted_bones")
+
+
+# Register and UnRegister functions for the blender objects
 
 
 def register():
+    bpy.utils.register_class(FixTwistedBones)
     bpy.utils.register_class(CopyBoneRotations)
     bpy.utils.register_class(CopyArmaturewithoutAnimation)
     bpy.utils.register_class(TransferMoCapData)
+    bpy.utils.register_class(MocapArmaturePanel)
+    bpy.utils.register_class(VIEW3D_PT_tools_blendmocap)
 
 def unregister():
+    bpy.utils.unregister_class(VIEW3D_PT_tools_blendmocap)
+    bpy.utils.unregister_class(MocapArmaturePanel)
     bpy.utils.unregister_class(TransferMoCapData)
     bpy.utils.unregister_class(CopyArmaturewithoutAnimation)
     bpy.utils.unregister_class(CopyBoneRotations)
+    bpy.utils.unregister_class(FixTwistedBones)
 
 
 if __name__ == "__main__":
