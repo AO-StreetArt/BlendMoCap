@@ -14,7 +14,11 @@ As a result of the difficulties encountered with these tools, we have made sever
 
 In a nutshell: BlendMoCap is slow and tedious, but is able to compensate for most characters and motion capture files in production scenarios.  It is easily extensible with a very simple code base.  It is supported by the AO Team, and we welcome anyone who would like to report issues to help improve the tool.
 
+`BlendMoCap documentation <http://blendmocap.readthedocs.io/>`__ can be found `here <http://blendmocap.readthedocs.io/>`__.
+
+`BlendMoCap source code <https://github.com/AO-StreetArt/BlendMoCap>`__ can be found `here <https://github.com/AO-StreetArt/BlendMoCap>`__.
+
 Contributing
 ------------
 
-We welcome contributions, please see the Contributing.md file for instructions.
+We welcome contributions, please see the `Contributing.md <https://github.com/AO-StreetArt/BlendMoCap/blob/master/CONTRIBUTING.md>`__ file for instructions.
