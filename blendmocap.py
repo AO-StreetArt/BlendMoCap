@@ -35,19 +35,6 @@ import bpy
 # Base Functions
 
 
-# Transform the mocap constraints to keyframes
-def create_mocap_keyframes(src, trg, keyframe_interval):
-    print("Creating Motion Capture Keyframes on %s with target %s" % (src.name, trg.name))
-
-    select_and_pose(src)
-    bpy.ops.pose.select_all(action='SELECT')
-
-    start_frame_index = bpy.context.scene.frame_start
-    end_frame_index = bpy.context.scene.frame_end
-
-    bpy.ops.nla.bake(frame_start=start_frame_index, frame_end=end_frame_index, visual_keying=True,
-                     clear_constraints=True, step=keyframe_interval,only_selected=True, bake_types={'POSE'})
-
 # Select an object and switch to pose mode
 def select_and_pose(src):
     # Deselect everything
@@ -60,6 +47,20 @@ def select_and_pose(src):
 
     # Set pose mode and select all the bones in the armature
     bpy.ops.object.mode_set(mode='POSE')
+
+
+# Transform the mocap constraints to keyframes
+def create_mocap_keyframes(src, trg, keyframe_interval):
+    print("Creating Motion Capture Keyframes on %s with target %s" % (src.name, trg.name))
+
+    select_and_pose(src)
+    bpy.ops.pose.select_all(action='SELECT')
+
+    start_frame_index = bpy.context.scene.frame_start
+    end_frame_index = bpy.context.scene.frame_end
+
+    bpy.ops.nla.bake(frame_start=start_frame_index, frame_end=end_frame_index, visual_keying=True,
+                     clear_constraints=True, step=keyframe_interval,only_selected=True, bake_types={'POSE'})
 
 
 # Removes the mocap constraints, and ensures that if any bones were selected in pose mode, then they stay selected
@@ -102,40 +103,59 @@ def copy_bone_rolls(src, trg):
         print(eb.name, old_roll, eb.roll)
 
 
+# Determine if a bone name is in an armature object
+def is_bone_in_armature(name, armature):
+    for bone in armature.pose.bones:
+        if (bone.name == name):
+            return True
+    return False
+
+
 # Copy Location Constraints
 def add_location_mocap_constraints(src, trg):
     print("Adding Location Constraints to %s with target %s" % (src.name, trg.name))
-    # iterate over the pose bones
-    for bone in bpy.context.selected_pose_bones:
 
-        # Apply a Copy Rotation Constraint to each pose bone
-        new_constraint = bone.constraints.new('COPY_LOCATION')
-
-        # Set up the constraint target and set it to copy pose data
-        new_constraint.target = trg
-        new_constraint.subtarget = bone.name
-        new_constraint.target_space = 'POSE'
-        new_constraint.owner_space = 'POSE'
-
-# Setup Copy Rotation & Location Constraints
-def add_rotation_mocap_constraints(src, trg):
-
-    print("Adding Rotation Constraints to %s with target %s" % (src, trg))
-
+    # Select the source armature and select all of the bones
     select_and_pose(src)
     bpy.ops.pose.select_all(action='SELECT')
 
     # iterate over the pose bones
     for bone in bpy.context.selected_pose_bones:
 
-        # Apply a Copy Rotation Constraint to each pose bone
-        new_constraint = bone.constraints.new('COPY_ROTATION')
+        # Only apply the constraints if the bone is in our target armature
+        if (is_bone_in_armature(bone.name, trg)):
+            # Apply a Copy Rotation Constraint to each pose bone
+            new_constraint = bone.constraints.new('COPY_LOCATION')
 
-        # Set up the constraint target and set it to copy pose data
-        new_constraint.target = trg
-        new_constraint.subtarget = bone.name
-        new_constraint.target_space = 'POSE'
-        new_constraint.owner_space = 'POSE'
+            # Set up the constraint target and set it to copy pose data
+            new_constraint.target = trg
+            new_constraint.subtarget = bone.name
+            new_constraint.target_space = 'POSE'
+            new_constraint.owner_space = 'POSE'
+
+# Setup Copy Rotation & Location Constraints
+def add_rotation_mocap_constraints(src, trg):
+
+    print("Adding Rotation Constraints to %s with target %s" % (src, trg))
+
+    # Select the source armature and select all of the bones
+    select_and_pose(src)
+    bpy.ops.pose.select_all(action='SELECT')
+
+    # iterate over the pose bones
+    for bone in bpy.context.selected_pose_bones:
+
+        # Only apply the constraints if the bone is in our target armature
+        if (is_bone_in_armature(bone.name, trg)):
+
+            # Apply a Copy Rotation Constraint to each pose bone
+            new_constraint = bone.constraints.new('COPY_ROTATION')
+
+            # Set up the constraint target and set it to copy pose data
+            new_constraint.target = trg
+            new_constraint.subtarget = bone.name
+            new_constraint.target_space = 'POSE'
+            new_constraint.owner_space = 'POSE'
 
 
 # Core Logic
